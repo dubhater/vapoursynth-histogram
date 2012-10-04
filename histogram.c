@@ -14,11 +14,11 @@ typedef struct {
 
    int E167;
    uint8_t exptab[256];
-} HistogramData;
+} ClassicData;
 
 
-static void VS_CC histogramInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-   HistogramData *d = (HistogramData *) * instanceData;
+static void VS_CC classicInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
+   ClassicData *d = (ClassicData *) * instanceData;
    vsapi->setVideoInfo(&d->vi, node);
 
    const double K = log(0.5/219)/255;
@@ -34,8 +34,8 @@ static void VS_CC histogramInit(VSMap *in, VSMap *out, void **instanceData, VSNo
 }
 
 
-static const VSFrameRef *VS_CC histogramGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-   HistogramData *d = (HistogramData *) * instanceData;
+static const VSFrameRef *VS_CC classicGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+   ClassicData *d = (ClassicData *) * instanceData;
 
    if (activationReason == arInitial) {
       vsapi->requestFrameFilter(n, d->node, frameCtx);
@@ -115,16 +115,16 @@ static const VSFrameRef *VS_CC histogramGetFrame(int n, int activationReason, vo
 }
 
 
-static void VS_CC histogramFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
-   HistogramData *d = (HistogramData *)instanceData;
+static void VS_CC classicFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
+   ClassicData *d = (ClassicData *)instanceData;
    vsapi->freeNode(d->node);
    free(d);
 }
 
 
-static void VS_CC histogramCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
-   HistogramData d;
-   HistogramData *data;
+static void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
+   ClassicData d;
+   ClassicData *data;
    const VSNodeRef *cref;
    int err;
 
@@ -134,7 +134,7 @@ static void VS_CC histogramCreate(const VSMap *in, VSMap *out, void *userData, V
    // In this first version we only want to handle 8bit integer formats. Note that
    // vi->format can be 0 if the input clip can change format midstream.
    if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample != 8) {
-      vsapi->setError(out, "Histogram: only constant format 8bit integer input supported");
+      vsapi->setError(out, "Classic: only constant format 8bit integer input supported");
       vsapi->freeNode(d.node);
       return;
    }
@@ -144,7 +144,7 @@ static void VS_CC histogramCreate(const VSMap *in, VSMap *out, void *userData, V
    data = malloc(sizeof(d));
    *data = d;
 
-   cref = vsapi->createFilter(in, out, "Histogram", histogramInit, histogramGetFrame, histogramFree, fmParallel, 0, data, core);
+   cref = vsapi->createFilter(in, out, "Classic", classicInit, classicGetFrame, classicFree, fmParallel, 0, data, core);
    vsapi->propSetNode(out, "clip", cref, 0);
    vsapi->freeNode(cref);
    return;
@@ -153,5 +153,5 @@ static void VS_CC histogramCreate(const VSMap *in, VSMap *out, void *userData, V
 
 void VS_CC VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
    configFunc("com.nodame.histogram", "hist", "VapourSynth Histogram Plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
-   registerFunc("Histogram", "clip:clip;", histogramCreate, 0, plugin);
+   registerFunc("Classic", "clip:clip;", classicCreate, 0, plugin);
 }
