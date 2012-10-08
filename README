@@ -4,6 +4,6 @@ All modes dealing with video are implemented
 (classic, levels, color, color2, luma).
 
 To compile in Linux (and possibly other Unix-like systems):
-clang -shared -fPIC -o libhistogram.so histogram.c
+clang -shared -fPIC -o libhistogram.so *.c
 
 Currently only tested in Linux.
