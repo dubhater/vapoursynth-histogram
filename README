@@ -1,6 +1,8 @@
 Port of the Histogram() function from Avisynth.
 
-So far, only the default mode is implemented.
+Modes implemented so far:
+- classic
+- levels
 
 To compile in Linux (and possibly other Unix-like systems):
 clang -shared -fPIC -o libhistogram.so histogram.c
