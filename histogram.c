@@ -461,6 +461,13 @@ static void VS_CC levelsCreate(const VSMap *in, VSMap *out, void *userData, VSCo
       d.factor = 100.0;
    }
 
+   // Comparing them directly?
+   if (d.factor < 0.0 || d.factor > 100.0) {
+      vsapi->setError(out, "Levels: factor must be between 0 and 100 (inclusive)");
+      vsapi->freeNode(d.node);
+      return;
+   }
+
    // In this first version we only want to handle 8bit integer formats. Note that
    // vi->format can be 0 if the input clip can change format midstream.
    if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample != 8) {
