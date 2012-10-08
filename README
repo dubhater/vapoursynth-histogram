@@ -4,6 +4,7 @@ Modes implemented so far:
 - classic
 - levels
 - color
+- color2
 
 To compile in Linux (and possibly other Unix-like systems):
 clang -shared -fPIC -o libhistogram.so histogram.c
