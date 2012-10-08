@@ -3,6 +3,7 @@ Port of the Histogram() function from Avisynth.
 Modes implemented so far:
 - classic
 - levels
+- color
 
 To compile in Linux (and possibly other Unix-like systems):
 clang -shared -fPIC -o libhistogram.so histogram.c
