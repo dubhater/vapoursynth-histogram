@@ -1,4 +1,4 @@
-#include <VapourSynth.h>
+#include <vapoursynth/VapourSynth.h>
 
 #include "classic.h"
 #include "levels.h"
