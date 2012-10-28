@@ -7,3 +7,5 @@ To compile in Linux (and possibly other Unix-like systems):
 clang -shared -fPIC -o libhistogram.so *.c
 
 Currently only tested in Linux.
+
+A win32 dll can be found in the Downloads section.
