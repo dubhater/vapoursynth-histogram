@@ -8,7 +8,7 @@
 
 
 
-void VS_CC VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
+VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
    configFunc("com.nodame.histogram", "hist", "VapourSynth Histogram Plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
    registerFunc("Classic", "clip:clip;", classicCreate, 0, plugin);
    registerFunc("Levels", "clip:clip;factor:float:opt;", levelsCreate, 0, plugin);
