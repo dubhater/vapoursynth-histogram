@@ -64,90 +64,83 @@ static const VSFrameRef *VS_CC classicGetFrame(int n, int activationReason, void
             memcpy(dstp + dst_stride * y, srcp + src_stride * y, src_stride);
          }
 
-         switch (fi->bitsPerSample) {
-            case 8:
-            {
-               // Now draw the histogram in the right side of dst.
-               if (plane == 0) {
-                  for (y = 0; y < h; y++) {
-                     int hist[256] = {0};
-                     for (x = 0; x < w; x++) {
-                        hist[dstp[x]] += 1;
-                     }
-                     for (x = 0; x < 256; x++) {
-                        if (x < 16 || x == 124 || x > 235) {
-                           dstp[x + w] = d->exptab[MIN(d->E167, hist[x])] + 68; // Magic numbers!
-                        } else {
-                           dstp[x + w] = d->exptab[MIN(255, hist[x])];
-                        }
-                     }
-                     dstp += dst_stride;
+         int bps = fi->bitsPerSample;
+         if (bps == 8) {
+            // Now draw the histogram in the right side of dst.
+            if (plane == 0) {
+               for (y = 0; y < h; y++) {
+                  int hist[256] = {0};
+                  for (x = 0; x < w; x++) {
+                     hist[dstp[x]] += 1;
                   }
-               } else {
-                  const int subs = fi->subSamplingW;
-                  const int factor = 1 << subs;
-
-                  for (y = 0; y < h; y++) {
-                     for (x = 0; x < 256; x += factor) {
-                        if (x < 16 || x > 235) {
-                           // Blue. Because I can.
-                           dstp[(x >> subs) + w] = (plane == 1) ? 200 : 128;
-                        } else if (x == 124) {
-                           dstp[(x >> subs) + w] = (plane == 1) ? 160 : 16;
-                        } else {
-                           dstp[(x >> subs) + w] = 128;
-                        }
+                  for (x = 0; x < 256; x++) {
+                     if (x < 16 || x == 124 || x > 235) {
+                        dstp[x + w] = d->exptab[MIN(d->E167, hist[x])] + 68; // Magic numbers!
+                     } else {
+                        dstp[x + w] = d->exptab[MIN(255, hist[x])];
                      }
-                     dstp += dst_stride;
                   }
+                  dstp += dst_stride;
                }
-               break;
-            }
-            case 10:
-            {
-               uint16_t* dstp16 = (uint16_t*)dstp;
-               // Now draw the histogram in the right side of dst.
-               if (plane == 0) {
-                  for (y = 0; y < h; y++) {
-                     int hist[256] = {0};
-                     for (x = 0; x < w; x++) {
-                        // Add 2 for rounding.
-                        hist[(dstp16[x] + 2) >> 2] += 1;
-                     }
-                     for (x = 0; x < 256; x++) {
-                        if (x < 16 || x == 124 || x > 235) {
-                           dstp16[x + w] = d->exptab[MIN(d->E167, hist[x])] + 68; // Magic numbers!
-                        } else {
-                           dstp16[x + w] = d->exptab[MIN(255, hist[x])];
-                        }
-                        dstp16[x + w] <<= 2;
-                     }
-                     dstp16 += dst_stride/2;
-                  }
-               } else {
-                  const int subs = fi->subSamplingW;
-                  const int factor = 1 << subs;
+            } else {
+               const int subs = fi->subSamplingW;
+               const int factor = 1 << subs;
 
-                  for (y = 0; y < h; y++) {
-                     for (x = 0; x < 256; x += factor) {
-                        if (x < 16 || x > 235) {
-                           // Blue. Because I can.
-                           dstp16[(x >> subs) + w] = (plane == 1) ? 200 : 128;
-                        } else if (x == 124) {
-                           dstp16[(x >> subs) + w] = (plane == 1) ? 160 : 16;
-                        } else {
-                           dstp16[(x >> subs) + w] = 128;
-                        }
-                        dstp16[(x >> subs) + w] <<= 2;
+               for (y = 0; y < h; y++) {
+                  for (x = 0; x < 256; x += factor) {
+                     if (x < 16 || x > 235) {
+                        // Blue. Because I can.
+                        dstp[(x >> subs) + w] = (plane == 1) ? 200 : 128;
+                     } else if (x == 124) {
+                        dstp[(x >> subs) + w] = (plane == 1) ? 160 : 16;
+                     } else {
+                        dstp[(x >> subs) + w] = 128;
                      }
-                     dstp16 += dst_stride/2;
                   }
+                  dstp += dst_stride;
                }
-               break;
             }
-         }
+         } else {
+            uint16_t* dstp16 = (uint16_t*)dstp;
+            // Now draw the histogram in the right side of dst.
+            if (plane == 0) {
+               for (y = 0; y < h; y++) {
+                  int hist[256] = {0};
+                  for (x = 0; x < w; x++) {
+                     // Add (1 << (bps - 8 - 1)) for rounding.
+                     hist[(dstp16[x] + (1 << (bps - 8 - 1))) >> (bps - 8)] += 1;
+                  }
+                  for (x = 0; x < 256; x++) {
+                     if (x < 16 || x == 124 || x > 235) {
+                        dstp16[x + w] = d->exptab[MIN(d->E167, hist[x])] + 68; // Magic numbers!
+                     } else {
+                        dstp16[x + w] = d->exptab[MIN(255, hist[x])];
+                     }
+                     dstp16[x + w] <<= (bps - 8);
+                  }
+                  dstp16 += dst_stride/2;
+               }
+            } else {
+               const int subs = fi->subSamplingW;
+               const int factor = 1 << subs;
 
-      }
+               for (y = 0; y < h; y++) {
+                  for (x = 0; x < 256; x += factor) {
+                     if (x < 16 || x > 235) {
+                        // Blue. Because I can.
+                        dstp16[(x >> subs) + w] = (plane == 1) ? 200 : 128;
+                     } else if (x == 124) {
+                        dstp16[(x >> subs) + w] = (plane == 1) ? 160 : 16;
+                     } else {
+                        dstp16[(x >> subs) + w] = 128;
+                     }
+                     dstp16[(x >> subs) + w] <<= (bps - 8);
+                  }
+                  dstp16 += dst_stride/2;
+               }
+            } // if plane
+         } // if bps
+      } // for plane
 
       // Release the source frame
       vsapi->freeFrame(src);
@@ -180,9 +173,9 @@ void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
    // Note that vi->format can be 0 if the input clip can change format midstream.
    if (!d.vi.format
          || d.vi.format->sampleType != stInteger
-         || (d.vi.format->bitsPerSample != 8 && d.vi.format->bitsPerSample != 10)
+         || d.vi.format->bitsPerSample > 16
          || d.vi.format->colorFamily != cmYUV) {
-      vsapi->setError(out, "Classic: only constant format 8 or 10 bit integer YUV input supported");
+      vsapi->setError(out, "Classic: only constant format 8..16 bit integer YUV input supported");
       vsapi->freeNode(d.node);
       return;
    }
