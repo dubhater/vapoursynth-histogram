@@ -5,14 +5,14 @@
 #include "common.h"
 
 typedef struct {
-   const VSNodeRef *node;
+   VSNodeRef *node;
    VSVideoInfo vi;
 } LumaData;
 
 
 static void VS_CC lumaInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
    LumaData *d = (LumaData *) * instanceData;
-   vsapi->setVideoInfo(&d->vi, node);
+   vsapi->setVideoInfo(&d->vi, 1, node);
 }
 
 
@@ -77,7 +77,6 @@ static void VS_CC lumaFree(void *instanceData, VSCore *core, const VSAPI *vsapi)
 void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
    LumaData d;
    LumaData *data;
-   const VSNodeRef *cref;
 
    d.node = vsapi->propGetNode(in, "clip", 0, 0);
    d.vi = *vsapi->getVideoInfo(d.node);
@@ -97,9 +96,7 @@ void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core,
    data = malloc(sizeof(d));
    *data = d;
 
-   cref = vsapi->createFilter(in, out, "Luma", lumaInit, lumaGetFrame, lumaFree, fmParallel, 0, data, core);
-   vsapi->propSetNode(out, "clip", cref, 0);
-   vsapi->freeNode(cref);
+   vsapi->createFilter(in, out, "Luma", lumaInit, lumaGetFrame, lumaFree, fmParallel, 0, data, core);
    return;
 }
 

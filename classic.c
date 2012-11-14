@@ -6,7 +6,7 @@
 #include "common.h"
 
 typedef struct {
-   const VSNodeRef *node;
+   VSNodeRef *node;
    VSVideoInfo vi;
 
    int E167;
@@ -16,7 +16,7 @@ typedef struct {
 
 static void VS_CC classicInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
    ClassicData *d = (ClassicData *) * instanceData;
-   vsapi->setVideoInfo(&d->vi, node);
+   vsapi->setVideoInfo(&d->vi, 1, node);
 
    const double K = log(0.5/219)/255;
 
@@ -164,7 +164,6 @@ static void VS_CC classicFree(void *instanceData, VSCore *core, const VSAPI *vsa
 void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
    ClassicData d;
    ClassicData *data;
-   const VSNodeRef *cref;
    int err;
 
    d.node = vsapi->propGetNode(in, "clip", 0, 0);
@@ -185,9 +184,7 @@ void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
    data = malloc(sizeof(d));
    *data = d;
 
-   cref = vsapi->createFilter(in, out, "Classic", classicInit, classicGetFrame, classicFree, fmParallel, 0, data, core);
-   vsapi->propSetNode(out, "clip", cref, 0);
-   vsapi->freeNode(cref);
+   vsapi->createFilter(in, out, "Classic", classicInit, classicGetFrame, classicFree, fmParallel, 0, data, core);
    return;
 }
 

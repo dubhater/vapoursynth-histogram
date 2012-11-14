@@ -5,7 +5,7 @@
 #include "common.h"
 
 typedef struct {
-   const VSNodeRef *node;
+   VSNodeRef *node;
    VSVideoInfo vi;
    double factor;
 } LevelsData;
@@ -13,7 +13,7 @@ typedef struct {
 
 static void VS_CC levelsInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
    LevelsData *d = (LevelsData *) * instanceData;
-   vsapi->setVideoInfo(&d->vi, node);
+   vsapi->setVideoInfo(&d->vi, 1, node);
 }
 
 
@@ -293,7 +293,6 @@ static void VS_CC levelsFree(void *instanceData, VSCore *core, const VSAPI *vsap
 void VS_CC levelsCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
    LevelsData d;
    LevelsData *data;
-   const VSNodeRef *cref;
    int err;
 
    d.node = vsapi->propGetNode(in, "clip", 0, 0);
@@ -325,9 +324,7 @@ void VS_CC levelsCreate(const VSMap *in, VSMap *out, void *userData, VSCore *cor
    data = malloc(sizeof(d));
    *data = d;
 
-   cref = vsapi->createFilter(in, out, "Levels", levelsInit, levelsGetFrame, levelsFree, fmParallel, 0, data, core);
-   vsapi->propSetNode(out, "clip", cref, 0);
-   vsapi->freeNode(cref);
+   vsapi->createFilter(in, out, "Levels", levelsInit, levelsGetFrame, levelsFree, fmParallel, 0, data, core);
    return;
 }
 

@@ -5,14 +5,14 @@
 #include "common.h"
 
 typedef struct {
-   const VSNodeRef *node;
+   VSNodeRef *node;
    VSVideoInfo vi;
 } ColorData;
 
 
 static void VS_CC colorInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
    ColorData *d = (ColorData *) * instanceData;
-   vsapi->setVideoInfo(&d->vi, node);
+   vsapi->setVideoInfo(&d->vi, 1, node);
 }
 
 
@@ -150,7 +150,6 @@ static void VS_CC colorFree(void *instanceData, VSCore *core, const VSAPI *vsapi
 void VS_CC colorCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
    ColorData d;
    ColorData *data;
-   const VSNodeRef *cref;
 
    d.node = vsapi->propGetNode(in, "clip", 0, 0);
    d.vi = *vsapi->getVideoInfo(d.node);
@@ -170,9 +169,7 @@ void VS_CC colorCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core
    data = malloc(sizeof(d));
    *data = d;
 
-   cref = vsapi->createFilter(in, out, "Color", colorInit, colorGetFrame, colorFree, fmParallel, 0, data, core);
-   vsapi->propSetNode(out, "clip", cref, 0);
-   vsapi->freeNode(cref);
+   vsapi->createFilter(in, out, "Color", colorInit, colorGetFrame, colorFree, fmParallel, 0, data, core);
    return;
 }
 
