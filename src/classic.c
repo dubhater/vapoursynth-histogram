@@ -1,7 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <vapoursynth/VapourSynth.h>
+#include <VapourSynth.h>
 
 #include "common.h"
 

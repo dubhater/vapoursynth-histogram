@@ -7,5 +7,7 @@ LT_INIT([disable-static win32-dll])
 
 AC_PROG_CC_C99
 
+PKG_CHECK_MODULES([VapourSynth], [vapoursynth])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
