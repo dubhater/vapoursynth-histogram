@@ -1,5 +1,7 @@
 AC_INIT([Histogram], [1], [https://github.com/dubhater/vapoursynth-histogram/issues], [], [https://github.com/dubhater/vapoursynth-histogram/])
 
+: ${CFLAGS="-O2"}
+
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-xz subdir-objects no-define])
 AM_SILENT_RULES([yes])
 
