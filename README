@@ -3,9 +3,7 @@ Port of the Histogram() function from Avisynth.
 All modes dealing with video are implemented
 (classic, levels, color, color2, luma).
 
-To compile in Linux (and possibly other Unix-like systems):
-clang -shared -fPIC -o libhistogram.so *.c
-
-Currently only tested in Linux.
-
-A win32 dll can be found in the Downloads section.
+To compile:
+./autogen.sh
+./configure
+make
