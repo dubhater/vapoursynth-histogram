@@ -45,7 +45,6 @@ static const VSFrameRef *VS_CC levelsGetFrame(int n, int activationReason, void 
       int src_width[fi->numPlanes];
 
       int dst_height[fi->numPlanes];
-      int dst_width[fi->numPlanes];
 
       int y;
       int x;
@@ -67,7 +66,6 @@ static const VSFrameRef *VS_CC levelsGetFrame(int n, int activationReason, void 
          src_width[plane] = vsapi->getFrameWidth(src, plane);
 
          dst_height[plane] = vsapi->getFrameHeight(dst, plane);
-         dst_width[plane] = vsapi->getFrameWidth(dst, plane);
 
          // Copy src to dst one line at a time.
          for (y = 0; y < src_height[plane]; y++) {

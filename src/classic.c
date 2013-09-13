@@ -164,7 +164,6 @@ static void VS_CC classicFree(void *instanceData, VSCore *core, const VSAPI *vsa
 void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
    ClassicData d;
    ClassicData *data;
-   int err;
 
    d.node = vsapi->propGetNode(in, "clip", 0, 0);
    d.vi = *vsapi->getVideoInfo(d.node);
