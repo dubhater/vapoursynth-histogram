@@ -33,11 +33,17 @@ static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **
       // are an essential part of the filter chain and you should NEVER break it.
       VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
-
-      const uint8_t *srcp = vsapi->getReadPtr(src, 0);
+	  if(fi->bitsPerSample = 8)
+	  {
+		 const uint8_t *srcp = vsapi->getReadPtr(src, 0);
+		 uint8_t *dstp = vsapi->getWritePtr(dst, 0);
+	  }
+	  else
+	  {
+	  	 const uint16_t *srcp = vsapi->getReadPtr(src, 0);
+		 uint16_t *dstp = vsapi->getWritePtr(dst, 0);
+	  }
       int src_stride = vsapi->getStride(src, 0);
-
-      uint8_t *dstp = vsapi->getWritePtr(dst, 0);
       int dst_stride = vsapi->getStride(dst, 0);
 
       int src_height = vsapi->getFrameHeight(src, 0);
@@ -46,13 +52,24 @@ static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **
       int y;
       int x;
 
-
-      for (y = 0; y < src_height; y++) {
-         for (x = 0; x < src_width; x++) {
-            int p = srcp[src_stride * y + x] << 4;
-            dstp[dst_stride * y + x] = (p & 256) ? (255 - (p & 0xff)) : p & 0xff;
-         }
-      }
+      if(fi->bitsPerSample == 8)
+	  {
+	      for (y = 0; y < src_height; y++) {
+		     for (x = 0; x < src_width; x++) {
+			   int p = srcp[src_stride * y + x] << 4;
+			   dstp[dst_stride * y + x] = (p & 256) ? (255 - (p & 0xff)) : p & 0xff;
+			}
+          }
+	  }
+	  else
+	  {
+		  for (y = 0; y < src_height; y++) {
+		     for (x = 0; x < src_width; x++) {
+			   int p = srcp[src_stride * y + x] << 4;
+			   dstp[dst_stride * y + x] = (p & (0xffff+1) ? (0xffff - (p & 0xffff)) : p & 0xffff;
+			}
+          }
+	  }
 
 
       // Release the source frame
@@ -82,16 +99,20 @@ void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core,
    d.vi = *vsapi->getVideoInfo(d.node);
 
 
-   // In this first version we only want to handle 8bit integer formats. Note that
+   // In this first version we only want to handle 8 and 16bit integer formats. Note that
    // vi->format can be 0 if the input clip can change format midstream.
-   if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample != 8) {
-      vsapi->setError(out, "Luma: only constant format 8bit integer input supported");
+   if (!d.vi.format || d.vi.format->sampleType != stInteger || (d.vi.format->bitsPerSample != 8 && d.vi.format->bitsPerSample != 16)) {
+      vsapi->setError(out, "Luma: only constant format 8 and 16bit integer input supported");
       vsapi->freeNode(d.node);
       return;
    }
 
    // We don't need any chroma.
-   d.vi.format = vsapi->getFormatPreset(pfGray8, core);
+   if(d.vi.format->bitsPerSample == 8)
+	  d.vi.format = vsapi->getFormatPreset(pfGray8, core);
+   else
+	  d.vi.format = vsapi->getFormatPreset(pfGray16, core);
+	
 
    data = malloc(sizeof(d));
    *data = d;
