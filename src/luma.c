@@ -42,7 +42,7 @@ static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **
       int y;
       int x;
      
-      if(fi->bitsPerSample = 8)
+      if(fi->bitsPerSample == 8)
       {
          const uint8_t *srcp = vsapi->getReadPtr(src, 0);
          uint8_t *dstp = vsapi->getWritePtr(dst, 0);
@@ -56,15 +56,15 @@ static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **
       }
       else
       {
-         const uint16_t *srcp = vsapi->getReadPtr(src, 0);
-         uint16_t *dstp = vsapi->getWritePtr(dst, 0);
+         const uint16_t *srcp = (const uint16_t *)vsapi->getReadPtr(src, 0);
+         uint16_t *dstp = (uint16_t *)vsapi->getWritePtr(dst, 0);
          src_stride = src_stride / 2;
          dst_stride = dst_stride / 2;
        
          for (y = 0; y < src_height; y++) {
             for (x = 0; x < src_width; x++) {
                int p = srcp[src_stride * y + x] << 4;
-               dstp[dst_stride * y + x] = (p & (0xffff+1) ? (0xffff - (p & 0xffff)) : p & 0xffff;
+               dstp[dst_stride * y + x] = (p & (0xffff+1)) ? (0xffff - (p & 0xffff)) : p & 0xffff;
             }
          }
       }
