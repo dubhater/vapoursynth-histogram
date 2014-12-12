@@ -32,17 +32,7 @@ static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **
       // supply the "domainant" source frame to copy properties from. Frame props
       // are an essential part of the filter chain and you should NEVER break it.
       VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
-
-	  if(fi->bitsPerSample = 8)
-	  {
-		 const uint8_t *srcp = vsapi->getReadPtr(src, 0);
-		 uint8_t *dstp = vsapi->getWritePtr(dst, 0);
-	  }
-	  else
-	  {
-	  	 const uint16_t *srcp = vsapi->getReadPtr(src, 0);
-		 uint16_t *dstp = vsapi->getWritePtr(dst, 0);
-	  }
+      
       int src_stride = vsapi->getStride(src, 0);
       int dst_stride = vsapi->getStride(dst, 0);
 
@@ -51,27 +41,34 @@ static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **
 
       int y;
       int x;
-
-      if(fi->bitsPerSample == 8)
-	  {
-	      for (y = 0; y < src_height; y++) {
-		     for (x = 0; x < src_width; x++) {
-			   int p = srcp[src_stride * y + x] << 4;
-			   dstp[dst_stride * y + x] = (p & 256) ? (255 - (p & 0xff)) : p & 0xff;
-			}
-          }
-	  }
-	  else
-	  {
-		  for (y = 0; y < src_height; y++) {
-		     for (x = 0; x < src_width; x++) {
-			   int p = srcp[src_stride * y + x] << 4;
-			   dstp[dst_stride * y + x] = (p & (0xffff+1) ? (0xffff - (p & 0xffff)) : p & 0xffff;
-			}
-          }
-	  }
-
-
+     
+      if(fi->bitsPerSample = 8)
+      {
+         const uint8_t *srcp = vsapi->getReadPtr(src, 0);
+         uint8_t *dstp = vsapi->getWritePtr(dst, 0);
+       
+         for (y = 0; y < src_height; y++) {
+            for (x = 0; x < src_width; x++) {
+               int p = srcp[src_stride * y + x] << 4;
+               dstp[dst_stride * y + x] = (p & 256) ? (255 - (p & 0xff)) : p & 0xff;
+            }
+         }
+      }
+      else
+      {
+         const uint16_t *srcp = vsapi->getReadPtr(src, 0);
+         uint16_t *dstp = vsapi->getWritePtr(dst, 0);
+         src_stride = src_stride / 2;
+         dst_stride = dst_stride / 2;
+       
+         for (y = 0; y < src_height; y++) {
+            for (x = 0; x < src_width; x++) {
+               int p = srcp[src_stride * y + x] << 4;
+               dstp[dst_stride * y + x] = (p & (0xffff+1) ? (0xffff - (p & 0xffff)) : p & 0xffff;
+            }
+         }
+      }
+     
       // Release the source frame
       vsapi->freeFrame(src);
 
@@ -109,10 +106,10 @@ void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core,
 
    // We don't need any chroma.
    if(d.vi.format->bitsPerSample == 8)
-	  d.vi.format = vsapi->getFormatPreset(pfGray8, core);
+      d.vi.format = vsapi->getFormatPreset(pfGray8, core);
    else
-	  d.vi.format = vsapi->getFormatPreset(pfGray16, core);
-	
+      d.vi.format = vsapi->getFormatPreset(pfGray16, core);
+   
 
    data = malloc(sizeof(d));
    *data = d;
