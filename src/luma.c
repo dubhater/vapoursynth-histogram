@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <VapourSynth.h>
 
 typedef struct {
@@ -96,14 +95,9 @@ void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core,
     }
 
     // We don't need any chroma.
-    switch (d.vi.format->bitsPerSample) {
-    case 8: d.vi.format = vsapi->getFormatPreset(pfGray8, core); break;
-    case 16: d.vi.format = vsapi->getFormatPreset(pfGray16, core); break;
-    default: d.vi.format = vsapi->registerFormat(cmGray, stInteger, d.vi.format->bitsPerSample, 0, 0, core); break;
-    }
+    d.vi.format = vsapi->registerFormat(cmGray, stInteger, d.vi.format->bitsPerSample, 0, 0, core);
 
-    //Pow should be fine here since we only use it once.
-    d.maxVal = pow(2, d.vi.format->bitsPerSample) - 1;
+    d.maxVal = (1 << d.vi.format->bitsPerSample) - 1;
 
     data = malloc(sizeof(d));
     *data = d;
