@@ -1,11 +1,10 @@
 #include <VapourSynth.h>
 
-#include "classic.h"
-#include "levels.h"
-#include "color.h"
-#include "color2.h"
-#include "luma.h"
-
+void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
+void VS_CC levelsCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
+void VS_CC colorCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
+void VS_CC color2Create(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
+void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
 
 
 VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {

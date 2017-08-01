@@ -25,25 +25,21 @@ static const VSFrameRef *VS_CC colorGetFrame(int n, int activationReason, void *
       const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
       const VSFormat *fi = d->vi.format;
-      int height = d->vi.height;
-      int width = d->vi.width;
+	  int height = MAX(256, vsapi->getFrameHeight(src, 0));
+	  int width = vsapi->getFrameWidth(src, 0) + 256;
 
-      // When creating a new frame for output it is VERY EXTREMELY SUPER IMPORTANT to
-      // supply the "domainant" source frame to copy properties from. Frame props
-      // are an essential part of the filter chain and you should NEVER break it.
       VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
+	  const uint8_t *srcp[fi->numPlanes];
+	  int src_stride[fi->numPlanes];
 
-      const uint8_t *srcp[fi->numPlanes];
-      int src_stride[fi->numPlanes];
+	  uint8_t *dstp[fi->numPlanes];
+	  int dst_stride[fi->numPlanes];
 
-      uint8_t *dstp[fi->numPlanes];
-      int dst_stride[fi->numPlanes];
+	  int src_height[fi->numPlanes];
+	  int src_width[fi->numPlanes];
 
-      int src_height[fi->numPlanes];
-      int src_width[fi->numPlanes];
-
-      int dst_height[fi->numPlanes];
+	  int dst_height[fi->numPlanes];
 
       int y;
       int x;
@@ -125,12 +121,8 @@ static const VSFrameRef *VS_CC colorGetFrame(int n, int activationReason, void *
          memset(dstp[V] + src_width[V] + y * dst_stride[V], 128, 256 >> subW);
       }
 
-
-      // Release the source frame
       vsapi->freeFrame(src);
 
-      // A reference is consumed when it is returned so saving the dst ref somewhere
-      // and reusing it is not allowed.
       return dst;
    }
 
@@ -152,17 +144,16 @@ void VS_CC colorCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core
    d.node = vsapi->propGetNode(in, "clip", 0, 0);
    d.vi = *vsapi->getVideoInfo(d.node);
 
-
-   // In this first version we only want to handle 8bit integer formats. Note that
-   // vi->format can be 0 if the input clip can change format midstream.
    if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample != 8) {
       vsapi->setError(out, "Color: only constant format 8bit integer input supported");
       vsapi->freeNode(d.node);
       return;
    }
 
-   d.vi.width += 256;
-   d.vi.height = MAX(256, d.vi.height);
+   if (d.vi.width)
+	   d.vi.width += 256;
+   if (d.vi.height)
+	   d.vi.height = MAX(256, d.vi.height);
 
    data = malloc(sizeof(d));
    *data = d;

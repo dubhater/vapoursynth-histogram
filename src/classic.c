@@ -40,12 +40,9 @@ static const VSFrameRef *VS_CC classicGetFrame(int n, int activationReason, void
       const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
       const VSFormat *fi = d->vi.format;
-      int height = d->vi.height;
-      int width = d->vi.width;
+      int height = vsapi->getFrameHeight(src, 0);
+      int width = vsapi->getFrameWidth(src, 0) + 256;
 
-      // When creating a new frame for output it is VERY EXTREMELY SUPER IMPORTANT to
-      // supply the "domainant" source frame to copy properties from. Frame props
-      // are an essential part of the filter chain and you should NEVER break it.
       VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
       int plane;
@@ -142,11 +139,8 @@ static const VSFrameRef *VS_CC classicGetFrame(int n, int activationReason, void
          } // if bps
       } // for plane
 
-      // Release the source frame
       vsapi->freeFrame(src);
 
-      // A reference is consumed when it is returned so saving the dst ref somewhere
-      // and reusing it is not allowed.
       return dst;
    }
 
@@ -168,17 +162,17 @@ void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
    d.node = vsapi->propGetNode(in, "clip", 0, 0);
    d.vi = *vsapi->getVideoInfo(d.node);
 
-   // Note that vi->format can be 0 if the input clip can change format midstream.
    if (!d.vi.format
          || d.vi.format->sampleType != stInteger
          || d.vi.format->bitsPerSample > 16
          || d.vi.format->colorFamily != cmYUV) {
-      vsapi->setError(out, "Classic: only constant format 8..16 bit integer YUV input supported");
+      vsapi->setError(out, "Classic: only constant format 8 to 16 bit integer YUV input supported");
       vsapi->freeNode(d.node);
       return;
    }
 
-   d.vi.width += 256;
+   if(d.vi.width)
+	   d.vi.width += 256;
 
    data = malloc(sizeof(d));
    *data = d;

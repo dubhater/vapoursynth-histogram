@@ -34,25 +34,21 @@ static const VSFrameRef *VS_CC color2GetFrame(int n, int activationReason, void 
       const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
       const VSFormat *fi = d->vi.format;
-      int height = d->vi.height;
-      int width = d->vi.width;
+      int height = MAX(256, vsapi->getFrameHeight(src, 0));
+      int width = vsapi->getFrameWidth(src, 0) + 256;
 
-      // When creating a new frame for output it is VERY EXTREMELY SUPER IMPORTANT to
-      // supply the "domainant" source frame to copy properties from. Frame props
-      // are an essential part of the filter chain and you should NEVER break it.
       VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
+	  const uint8_t *srcp[fi->numPlanes];
+	  int src_stride[fi->numPlanes];
 
-      const uint8_t *srcp[fi->numPlanes];
-      int src_stride[fi->numPlanes];
+	  uint8_t *dstp[fi->numPlanes];
+	  int dst_stride[fi->numPlanes];
 
-      uint8_t *dstp[fi->numPlanes];
-      int dst_stride[fi->numPlanes];
+	  int src_height[fi->numPlanes];
+	  int src_width[fi->numPlanes];
 
-      int src_height[fi->numPlanes];
-      int src_width[fi->numPlanes];
-
-      int dst_height[fi->numPlanes];
+	  int dst_height[fi->numPlanes];
 
       int y;
       int x;
@@ -146,7 +142,7 @@ static const VSFrameRef *VS_CC color2GetFrame(int n, int activationReason, void 
             int distSq = x * x + y * y;
             if (distSq <= outerSq && distSq >= innerSq) {
                int interp = (int)(256.0f - (255.9f * (oneOverThicknessF * fabs(sqrt((float)distSq) - centerF))));
-               // 255.9 is to account for float inprecision, which could cause underflow.
+               // 255.9 is to account for float imprecision, which could cause underflow.
 
                int xP = 127 + x;
                int yP = 127 + y;
@@ -214,17 +210,16 @@ void VS_CC color2Create(const VSMap *in, VSMap *out, void *userData, VSCore *cor
    d.node = vsapi->propGetNode(in, "clip", 0, 0);
    d.vi = *vsapi->getVideoInfo(d.node);
 
-
-   // In this first version we only want to handle 8bit integer formats. Note that
-   // vi->format can be 0 if the input clip can change format midstream.
    if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample != 8) {
       vsapi->setError(out, "Color2: only constant format 8bit integer input supported");
       vsapi->freeNode(d.node);
       return;
    }
 
-   d.vi.width += 256;
-   d.vi.height = MAX(256, d.vi.height);
+   if(d.vi.width)
+	   d.vi.width += 256;
+   if(d.vi.height)
+	   d.vi.height = MAX(256, d.vi.height);
 
    data = malloc(sizeof(d));
    *data = d;
