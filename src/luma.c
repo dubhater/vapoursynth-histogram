@@ -4,110 +4,111 @@
 #include <VapourSynth.h>
 
 typedef struct {
-   VSNodeRef *node;
-   VSVideoInfo vi;
-   uint16_t maxVal;
+	VSNodeRef *node;
+	VSVideoInfo vi;
+	uint16_t maxVal;
 } LumaData;
 
 
 static void VS_CC lumaInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-   LumaData *d = (LumaData *) * instanceData;
-   vsapi->setVideoInfo(&d->vi, 1, node);
+	LumaData *d = (LumaData *)* instanceData;
+	vsapi->setVideoInfo(&d->vi, 1, node);
 }
 
 static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-   LumaData *d = (LumaData *) * instanceData;
+	LumaData *d = (LumaData *)* instanceData;
 
-   if (activationReason == arInitial) {
-      vsapi->requestFrameFilter(n, d->node, frameCtx);
-   } else if (activationReason == arAllFramesReady) {
-      const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
+	if (activationReason == arInitial) {
+		vsapi->requestFrameFilter(n, d->node, frameCtx);
+	}
+	else if (activationReason == arAllFramesReady) {
+		const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
-      const VSFormat *fi = d->vi.format;
-	  const int src_height = vsapi->getFrameHeight(src, 0);
-	  const int src_width = vsapi->getFrameWidth(src, 0);
+		const VSFormat *fi = d->vi.format;
+		const int src_height = vsapi->getFrameHeight(src, 0);
+		const int src_width = vsapi->getFrameWidth(src, 0);
 
-      VSFrameRef *dst = vsapi->newVideoFrame(fi, src_width, src_height, src, core);
-      
-      int src_stride = vsapi->getStride(src, 0);
-      int dst_stride = vsapi->getStride(dst, 0);
+		VSFrameRef *dst = vsapi->newVideoFrame(fi, src_width, src_height, src, core);
 
-	  const uint8_t highBitDepth = fi->bitsPerSample / 9;
+		int src_stride = vsapi->getStride(src, 0);
+		int dst_stride = vsapi->getStride(dst, 0);
 
-	  int y;
-	  int x;
+		const uint8_t highBitDepth = fi->bitsPerSample / 9;
 
-	  //Some duplicate code due to lack of templates
-	  if (highBitDepth) {
-		  src_stride /= 2;
-		  dst_stride /= 2;
-		  const uint16_t *srcp = vsapi->getReadPtr(src, 0);
-		  uint16_t *dstp = vsapi->getWritePtr(dst, 0);
-		  for (y = 0; y < src_height; y++) {
-			  for (x = 0; x < src_width; x++) {
-				  int p = srcp[x] << 4;
-				  dstp[x] = (p & d->maxVal + 1) ? (d->maxVal - (p & d->maxVal)) : p & d->maxVal;
-			  }
-			  srcp += src_stride;
-			  dstp += dst_stride;
-		  }
-	  }
-	  else {
-		  const uint8_t *srcp = vsapi->getReadPtr(src, 0);
-		  uint8_t *dstp = vsapi->getWritePtr(dst, 0);
-		  for (y = 0; y < src_height; y++) {
-			  for (x = 0; x < src_width; x++) {
-				  int p = srcp[x] << 4;
-				  dstp[x] = (p & d->maxVal + 1) ? (d->maxVal - (p & d->maxVal)) : p & d->maxVal;
-			  }
-			  srcp += src_stride;
-			  dstp += dst_stride;
-		  }
-	  }
-     
-      vsapi->freeFrame(src);
+		int y;
+		int x;
 
-      return dst;
-   }
+		//Some duplicate code due to lack of templates
+		if (highBitDepth) {
+			src_stride /= 2;
+			dst_stride /= 2;
+			const uint16_t *srcp = vsapi->getReadPtr(src, 0);
+			uint16_t *dstp = vsapi->getWritePtr(dst, 0);
+			for (y = 0; y < src_height; y++) {
+				for (x = 0; x < src_width; x++) {
+					int p = srcp[x] << 4;
+					dstp[x] = (p & d->maxVal + 1) ? (d->maxVal - (p & d->maxVal)) : p & d->maxVal;
+				}
+				srcp += src_stride;
+				dstp += dst_stride;
+			}
+		}
+		else {
+			const uint8_t *srcp = vsapi->getReadPtr(src, 0);
+			uint8_t *dstp = vsapi->getWritePtr(dst, 0);
+			for (y = 0; y < src_height; y++) {
+				for (x = 0; x < src_width; x++) {
+					int p = srcp[x] << 4;
+					dstp[x] = (p & d->maxVal + 1) ? (d->maxVal - (p & d->maxVal)) : p & d->maxVal;
+				}
+				srcp += src_stride;
+				dstp += dst_stride;
+			}
+		}
 
-   return 0;
+		vsapi->freeFrame(src);
+
+		return dst;
+	}
+
+	return 0;
 }
 
 
 static void VS_CC lumaFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
-   LumaData *d = (LumaData *)instanceData;
-   vsapi->freeNode(d->node);
-   free(d);
+	LumaData *d = (LumaData *)instanceData;
+	vsapi->freeNode(d->node);
+	free(d);
 }
 
 
 void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
-   LumaData d;
-   LumaData *data;
+	LumaData d;
+	LumaData *data;
 
-   d.node = vsapi->propGetNode(in, "clip", 0, 0);
-   d.vi = *vsapi->getVideoInfo(d.node);
+	d.node = vsapi->propGetNode(in, "clip", 0, 0);
+	d.vi = *vsapi->getVideoInfo(d.node);
 
-   if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample > 16) {
-      vsapi->setError(out, "Luma: only constant format 8 to 16 bit integer input supported");
-      vsapi->freeNode(d.node);
-      return;
-   }
+	if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample > 16) {
+		vsapi->setError(out, "Luma: only constant format 8 to 16 bit integer input supported");
+		vsapi->freeNode(d.node);
+		return;
+	}
 
-   // We don't need any chroma.
-   switch (d.vi.format->bitsPerSample) {
-   case 8: d.vi.format = vsapi->getFormatPreset(pfGray8, core); break;
-   case 16: d.vi.format = vsapi->getFormatPreset(pfGray16, core); break;
-   default: d.vi.format = vsapi->registerFormat(cmGray, stInteger, d.vi.format->bitsPerSample, 0, 0, core); break;
-   }
+	// We don't need any chroma.
+	switch (d.vi.format->bitsPerSample) {
+	case 8: d.vi.format = vsapi->getFormatPreset(pfGray8, core); break;
+	case 16: d.vi.format = vsapi->getFormatPreset(pfGray16, core); break;
+	default: d.vi.format = vsapi->registerFormat(cmGray, stInteger, d.vi.format->bitsPerSample, 0, 0, core); break;
+	}
 
-   //Pow should be fine here since we only use it once.
-   d.maxVal = pow(2, d.vi.format->bitsPerSample) - 1;
+	//Pow should be fine here since we only use it once.
+	d.maxVal = pow(2, d.vi.format->bitsPerSample) - 1;
 
-   data = malloc(sizeof(d));
-   *data = d;
+	data = malloc(sizeof(d));
+	*data = d;
 
-   vsapi->createFilter(in, out, "Luma", lumaInit, lumaGetFrame, lumaFree, fmParallel, 0, data, core);
-   return;
+	vsapi->createFilter(in, out, "Luma", lumaInit, lumaGetFrame, lumaFree, fmParallel, 0, data, core);
+	return;
 }
 
