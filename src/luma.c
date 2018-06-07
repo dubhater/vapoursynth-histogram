@@ -41,8 +41,8 @@ static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **
         if (highBitDepth) {
             src_stride /= 2;
             dst_stride /= 2;
-            const uint16_t *srcp = vsapi->getReadPtr(src, 0);
-            uint16_t *dstp = vsapi->getWritePtr(dst, 0);
+            const uint16_t *srcp = (const uint16_t *)vsapi->getReadPtr(src, 0);
+            uint16_t *dstp = (uint16_t *)vsapi->getWritePtr(dst, 0);
             for (y = 0; y < src_height; y++) {
                 for (x = 0; x < src_width; x++) {
                     int p = srcp[x] << 4;
