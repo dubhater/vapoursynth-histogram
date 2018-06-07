@@ -40,16 +40,16 @@ static const VSFrameRef *VS_CC color2GetFrame(int n, int activationReason, void 
 
         VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
-        const uint8_t *srcp[fi->numPlanes];
-        int src_stride[fi->numPlanes];
+        const uint8_t *srcp[3];
+        int src_stride[3];
 
-        uint8_t *dstp[fi->numPlanes];
-        int dst_stride[fi->numPlanes];
+        uint8_t *dstp[3];
+        int dst_stride[3];
 
-        int src_height[fi->numPlanes];
-        int src_width[fi->numPlanes];
+        int src_height[3];
+        int src_width[3];
 
-        int dst_height[fi->numPlanes];
+        int dst_height[3];
 
         int y;
         int x;
