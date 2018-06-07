@@ -1,4 +1,4 @@
-AC_INIT([Histogram], [1], [https://github.com/dubhater/vapoursynth-histogram/issues], [], [https://github.com/dubhater/vapoursynth-histogram/])
+AC_INIT([Histogram], [2], [https://github.com/dubhater/vapoursynth-histogram/issues], [], [https://github.com/dubhater/vapoursynth-histogram/])
 
 : ${CFLAGS="-O2"}
 
