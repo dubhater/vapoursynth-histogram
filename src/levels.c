@@ -104,6 +104,9 @@ static void drawYUV(uint8_t *dstp[3], const int src_width[3], const int src_heig
         dstp[Y][src_width[Y] + h * dst_stride[Y] + x] = 16 + left;
     }
 
+    if (fi->colorFamily == cmGray)
+        return;
+
     // Draw the histogram of the U plane.
     const int clampvalUV = (int)((src_width[U] * src_height[U]) * factor / 100.0);
 
