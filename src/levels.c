@@ -1,23 +1,18 @@
 #include <stdlib.h>
 #include <string.h>
-#include <VapourSynth.h>
+#include <VapourSynth4.h>
+#include <VSHelper4.h>
 
 #include "common.h"
 
 typedef struct {
-    VSNodeRef *node;
+    VSNode *node;
     VSVideoInfo vi;
     double factor;
 } LevelsData;
 
 
-static void VS_CC levelsInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    LevelsData *d = (LevelsData *)* instanceData;
-    vsapi->setVideoInfo(&d->vi, 1, node);
-}
-
-
-static void drawYUV(uint8_t *dstp[3], const int src_width[3], const int src_height[3], const int dst_height[3], const int dst_stride[3], int hist[3][256], double factor, const VSFormat *fi) {
+static void drawYUV(uint8_t *dstp[3], const int src_width[3], const int src_height[3], const int dst_height[3], const int dst_stride[3], int hist[3][256], double factor, const VSVideoFormat *fi) {
     int x, y;
 
     // Start drawing.
@@ -104,7 +99,7 @@ static void drawYUV(uint8_t *dstp[3], const int src_width[3], const int src_heig
         dstp[Y][src_width[Y] + h * dst_stride[Y] + x] = 16 + left;
     }
 
-    if (fi->colorFamily == cmGray)
+    if (fi->colorFamily == cfGray)
         return;
 
     // Draw the histogram of the U plane.
@@ -204,7 +199,7 @@ static void drawYUV(uint8_t *dstp[3], const int src_width[3], const int src_heig
 }
 
 
-static void drawRGB(uint8_t *dstp[3], const int src_width[3], const int src_height[3], const int dst_height[3], const int dst_stride[3], int hist[3][256], double factor, const VSFormat *fi) {
+static void drawRGB(uint8_t *dstp[3], const int src_width[3], const int src_height[3], const int dst_height[3], const int dst_stride[3], int hist[3][256], double factor, const VSVideoFormat *fi) {
     const int clampval = (int)((src_width[0] * src_height[0]) * factor / 100.0);
 
     for (int plane = 0; plane < 3; plane++) {
@@ -262,20 +257,20 @@ static void drawRGB(uint8_t *dstp[3], const int src_width[3], const int src_heig
 }
 
 
-static const VSFrameRef *VS_CC levelsGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    LevelsData *d = (LevelsData *)* instanceData;
+static const VSFrame *VS_CC levelsGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    LevelsData *d = (LevelsData *) instanceData;
 
     if (activationReason == arInitial) {
         vsapi->requestFrameFilter(n, d->node, frameCtx);
     }
     else if (activationReason == arAllFramesReady) {
-        const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        const VSFrame *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
-        const VSFormat *fi = d->vi.format;
+        const VSVideoFormat *fi = &d->vi.format;
         int height = MAX(256, vsapi->getFrameHeight(src, 0));
         int width = vsapi->getFrameWidth(src, 0) + 256;
 
-        VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
+        VSFrame *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
         const uint8_t *srcp[3];
         int src_stride[3];
@@ -319,7 +314,7 @@ static const VSFrameRef *VS_CC levelsGetFrame(int n, int activationReason, void 
             // If src was less than 256 px tall, make the extra lines black.
             if (src_height[plane] < dst_height[plane]) {
                 memset(dstp[plane] + src_height[plane] * dst_stride[plane],
-                    (plane == 0 || fi->colorFamily == cmRGB) ? 0 : 128,
+                    (plane == 0 || fi->colorFamily == cfRGB) ? 0 : 128,
                     (dst_height[plane] - src_height[plane]) * dst_stride[plane]);
             }
 
@@ -331,7 +326,7 @@ static const VSFrameRef *VS_CC levelsGetFrame(int n, int activationReason, void 
             }
         }
 
-        (fi->colorFamily == cmRGB ? drawRGB : drawYUV)(dstp, src_width, src_height, dst_height, dst_stride, hist, d->factor, fi);
+        (fi->colorFamily == cfRGB ? drawRGB : drawYUV)(dstp, src_width, src_height, dst_height, dst_stride, hist, d->factor, fi);
 
         vsapi->freeFrame(src);
 
@@ -354,23 +349,23 @@ void VS_CC levelsCreate(const VSMap *in, VSMap *out, void *userData, VSCore *cor
     LevelsData *data;
     int err;
 
-    d.node = vsapi->propGetNode(in, "clip", 0, 0);
+    d.node = vsapi->mapGetNode(in, "clip", 0, 0);
     d.vi = *vsapi->getVideoInfo(d.node);
 
-    d.factor = vsapi->propGetFloat(in, "factor", 0, &err);
+    d.factor = vsapi->mapGetFloat(in, "factor", 0, &err);
     if (err) {
         d.factor = 100.0;
     }
 
     // Comparing them directly?
     if (d.factor < 0.0 || d.factor > 100.0) {
-        vsapi->setError(out, "Levels: factor must be between 0 and 100 (inclusive)");
+        vsapi->mapSetError(out, "Levels: factor must be between 0 and 100 (inclusive)");
         vsapi->freeNode(d.node);
         return;
     }
 
-    if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample != 8) {
-        vsapi->setError(out, "Levels: only constant format 8bit integer input supported");
+    if (!vsh_isConstantVideoFormat(&d.vi) || d.vi.format.sampleType != stInteger || d.vi.format.bitsPerSample != 8) {
+        vsapi->mapSetError(out, "Levels: only constant format 8bit integer input supported");
         vsapi->freeNode(d.node);
         return;
     }
@@ -380,10 +375,10 @@ void VS_CC levelsCreate(const VSMap *in, VSMap *out, void *userData, VSCore *cor
     if (d.vi.height)
         d.vi.height = MAX(256, d.vi.height);
 
-    data = malloc(sizeof(d));
+    data = (LevelsData *)malloc(sizeof(d));
     *data = d;
 
-    vsapi->createFilter(in, out, "Levels", levelsInit, levelsGetFrame, levelsFree, fmParallel, 0, data, core);
-    return;
+    VSFilterDependency deps[] = { {d.node, rpStrictSpatial} };
+    vsapi->createVideoFilter(out, "Levels", &d.vi, levelsGetFrame, levelsFree, fmParallel, deps, 1, data, core);
 }
 

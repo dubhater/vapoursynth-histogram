@@ -1,4 +1,4 @@
-#include <VapourSynth.h>
+#include <VapourSynth4.h>
 
 void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
 void VS_CC levelsCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
@@ -7,11 +7,11 @@ void VS_CC color2Create(const VSMap *in, VSMap *out, void *userData, VSCore *cor
 void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
 
 
-VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
-    configFunc("com.nodame.histogram", "hist", "VapourSynth Histogram Plugin", VAPOURSYNTH_API_VERSION, 1, plugin);
-    registerFunc("Classic", "clip:clip;", classicCreate, 0, plugin);
-    registerFunc("Levels", "clip:clip;factor:float:opt;", levelsCreate, 0, plugin);
-    registerFunc("Color", "clip:clip;", colorCreate, 0, plugin);
-    registerFunc("Color2", "clip:clip;", color2Create, 0, plugin);
-    registerFunc("Luma", "clip:clip;", lumaCreate, 0, plugin);
+VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin* plugin, const VSPLUGINAPI* vspapi) {
+    vspapi->configPlugin("com.nodame.histogram", "hist", "VapourSynth Histogram Plugin", VS_MAKE_VERSION(1, 0), VAPOURSYNTH_API_VERSION, 1, plugin);
+    vspapi->registerFunction("Classic", "clip:vnode;", "clip:vnode;", classicCreate, NULL, plugin);
+    vspapi->registerFunction("Levels", "clip:vnode;factor:float:opt;", "clip:vnode;", levelsCreate, NULL, plugin);
+    vspapi->registerFunction("Color", "clip:vnode;", "clip:vnode;", colorCreate, NULL, plugin);
+    vspapi->registerFunction("Color2", "clip:vnode;", "clip:vnode;", color2Create, NULL, plugin);
+    vspapi->registerFunction("Luma", "clip:vnode;", "clip:vnode;", lumaCreate, NULL, plugin);
 }
