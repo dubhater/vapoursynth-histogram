@@ -1,35 +1,30 @@
 #include <stdlib.h>
 #include <string.h>
-#include <VapourSynth.h>
+#include <VapourSynth4.h>
+#include "VSHelper4.h"
 
 #include "common.h"
 
 typedef struct {
-    VSNodeRef *node;
+    VSNode *node;
     VSVideoInfo vi;
 } ColorData;
 
 
-static void VS_CC colorInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    ColorData *d = (ColorData *)* instanceData;
-    vsapi->setVideoInfo(&d->vi, 1, node);
-}
-
-
-static const VSFrameRef *VS_CC colorGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    ColorData *d = (ColorData *)* instanceData;
+static const VSFrame *VS_CC colorGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    ColorData *d = (ColorData *) instanceData;
 
     if (activationReason == arInitial) {
         vsapi->requestFrameFilter(n, d->node, frameCtx);
     }
     else if (activationReason == arAllFramesReady) {
-        const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        const VSFrame *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
-        const VSFormat *fi = d->vi.format;
+        const VSVideoFormat *fi = &d->vi.format;
         int height = MAX(256, vsapi->getFrameHeight(src, 0));
         int width = vsapi->getFrameWidth(src, 0) + 256;
 
-        VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
+        VSFrame *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
         const uint8_t *srcp[3];
         int src_stride[3];
@@ -142,11 +137,11 @@ void VS_CC colorCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core
     ColorData d;
     ColorData *data;
 
-    d.node = vsapi->propGetNode(in, "clip", 0, 0);
+    d.node = vsapi->mapGetNode(in, "clip", 0, 0);
     d.vi = *vsapi->getVideoInfo(d.node);
 
-    if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample != 8) {
-        vsapi->setError(out, "Color: only constant format 8bit integer input supported");
+    if (!vsh_isConstantVideoFormat(&d.vi) || d.vi.format.sampleType != stInteger || d.vi.format.bitsPerSample != 8) {
+        vsapi->mapSetError(out, "Color: only constant format 8bit integer input supported");
         vsapi->freeNode(d.node);
         return;
     }
@@ -156,9 +151,9 @@ void VS_CC colorCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core
     if (d.vi.height)
         d.vi.height = MAX(256, d.vi.height);
 
-    data = malloc(sizeof(d));
+    data = (ColorData *)malloc(sizeof(d));
     *data = d;
 
-    vsapi->createFilter(in, out, "Color", colorInit, colorGetFrame, colorFree, fmParallel, 0, data, core);
-    return;
+    VSFilterDependency deps[] = { {d.node, rpStrictSpatial} };
+    vsapi->createVideoFilter(out, "Color", &d.vi, colorGetFrame, colorFree, fmParallel, deps, 1, data, core);
 }

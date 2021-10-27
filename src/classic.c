@@ -1,12 +1,13 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <VapourSynth.h>
+#include <VapourSynth4.h>
+#include "VSHelper4.h"
 
 #include "common.h"
 
 typedef struct {
-    VSNodeRef *node;
+    VSNode *node;
     VSVideoInfo vi;
 
     int E167;
@@ -14,37 +15,20 @@ typedef struct {
 } ClassicData;
 
 
-static void VS_CC classicInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    ClassicData *d = (ClassicData *)* instanceData;
-    vsapi->setVideoInfo(&d->vi, 1, node);
-
-    const double K = log(0.5 / 219) / 255;
-
-    d->exptab[0] = 16;
-    int i;
-    for (i = 1; i < 255; i++) {
-        d->exptab[i] = (uint8_t)(16.5 + 219 * (1 - exp(i * K)));
-        if (d->exptab[i] <= 235 - 68)
-            d->E167 = i;
-    }
-    d->exptab[255] = 235;
-}
-
-
-static const VSFrameRef *VS_CC classicGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    ClassicData *d = (ClassicData *)* instanceData;
+static const VSFrame *VS_CC classicGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    ClassicData *d = (ClassicData *) instanceData;
 
     if (activationReason == arInitial) {
         vsapi->requestFrameFilter(n, d->node, frameCtx);
     }
     else if (activationReason == arAllFramesReady) {
-        const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        const VSFrame *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
-        const VSFormat *fi = d->vi.format;
+        const VSVideoFormat *fi = &d->vi.format;
         int height = vsapi->getFrameHeight(src, 0);
         int width = vsapi->getFrameWidth(src, 0) + 256;
 
-        VSFrameRef *dst = vsapi->newVideoFrame(fi, width, height, src, core);
+        VSFrame *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
         int plane;
         for (plane = 0; plane < fi->numPlanes; plane++) {
@@ -169,24 +153,35 @@ void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
     ClassicData d;
     ClassicData *data;
 
-    d.node = vsapi->propGetNode(in, "clip", 0, 0);
+    const double K = log(0.5 / 219) / 255;
+
+    d.exptab[0] = 16;
+    int i;
+    for (i = 1; i < 255; i++) {
+        d.exptab[i] = (uint8_t)(16.5 + 219 * (1 - exp(i * K)));
+        if (d.exptab[i] <= 235 - 68)
+            d.E167 = i;
+    }
+    d.exptab[255] = 235;
+
+    d.node = vsapi->mapGetNode(in, "clip", 0, 0);
     d.vi = *vsapi->getVideoInfo(d.node);
 
-    if (!d.vi.format
-        || d.vi.format->sampleType != stInteger
-        || d.vi.format->bitsPerSample > 16
-        || d.vi.format->colorFamily != cmYUV) {
-        vsapi->setError(out, "Classic: only constant format 8 to 16 bit integer YUV input supported");
+    if (!vsh_isConstantVideoFormat(&d.vi)
+        || d.vi.format.sampleType != stInteger
+        || d.vi.format.bitsPerSample > 16
+        || d.vi.format.colorFamily != cfYUV) {
+        vsapi->mapSetError(out, "Classic: only constant format 8 to 16 bit integer YUV input supported");
         vsapi->freeNode(d.node);
         return;
     }
 
     if (d.vi.width)
         d.vi.width += 256;
-
-    data = malloc(sizeof(d));
+        
+    data = (ClassicData *)malloc(sizeof(d));
     *data = d;
 
-    vsapi->createFilter(in, out, "Classic", classicInit, classicGetFrame, classicFree, fmParallel, 0, data, core);
-    return;
+    VSFilterDependency deps[] = { {d.node, rpStrictSpatial} };
+    vsapi->createVideoFilter(out, "Classic", &d.vi, classicGetFrame, classicFree, fmParallel, deps, 1, data, core);
 }

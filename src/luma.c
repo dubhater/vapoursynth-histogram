@@ -1,33 +1,29 @@
 #include <stdlib.h>
 #include <string.h>
-#include <VapourSynth.h>
+#include <VapourSynth4.h>
+#include "VSHelper4.h"
 
 typedef struct {
-    VSNodeRef *node;
+    VSNode *node;
     VSVideoInfo vi;
     uint16_t maxVal;
 } LumaData;
 
 
-static void VS_CC lumaInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    LumaData *d = (LumaData *)* instanceData;
-    vsapi->setVideoInfo(&d->vi, 1, node);
-}
-
-static const VSFrameRef *VS_CC lumaGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    LumaData *d = (LumaData *)* instanceData;
+static const VSFrame *VS_CC lumaGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    LumaData *d = (LumaData *) instanceData;
 
     if (activationReason == arInitial) {
         vsapi->requestFrameFilter(n, d->node, frameCtx);
     }
     else if (activationReason == arAllFramesReady) {
-        const VSFrameRef *src = vsapi->getFrameFilter(n, d->node, frameCtx);
+        const VSFrame *src = vsapi->getFrameFilter(n, d->node, frameCtx);
 
-        const VSFormat *fi = d->vi.format;
+        const VSVideoFormat *fi = &d->vi.format;
         const int src_height = vsapi->getFrameHeight(src, 0);
         const int src_width = vsapi->getFrameWidth(src, 0);
 
-        VSFrameRef *dst = vsapi->newVideoFrame(fi, src_width, src_height, src, core);
+        VSFrame *dst = vsapi->newVideoFrame(fi, src_width, src_height, src, core);
 
         int src_stride = vsapi->getStride(src, 0);
         int dst_stride = vsapi->getStride(dst, 0);
@@ -85,24 +81,24 @@ void VS_CC lumaCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core,
     LumaData d;
     LumaData *data;
 
-    d.node = vsapi->propGetNode(in, "clip", 0, 0);
+    d.node = vsapi->mapGetNode(in, "clip", 0, 0);
     d.vi = *vsapi->getVideoInfo(d.node);
 
-    if (!d.vi.format || d.vi.format->sampleType != stInteger || d.vi.format->bitsPerSample > 16) {
-        vsapi->setError(out, "Luma: only constant format 8 to 16 bit integer input supported");
+    if (!vsh_isConstantVideoFormat(&d.vi) || d.vi.format.sampleType != stInteger || d.vi.format.bitsPerSample > 16) {
+        vsapi->mapSetError(out, "Luma: only constant format 8 to 16 bit integer input supported");
         vsapi->freeNode(d.node);
         return;
     }
 
     // We don't need any chroma.
-    d.vi.format = vsapi->registerFormat(cmGray, stInteger, d.vi.format->bitsPerSample, 0, 0, core);
+    vsapi->queryVideoFormat(&d.vi.format, cfGray, stInteger, d.vi.format.bitsPerSample, 0, 0, core);
 
-    d.maxVal = (1 << d.vi.format->bitsPerSample) - 1;
+    d.maxVal = (1 << d.vi.format.bitsPerSample) - 1;
 
-    data = malloc(sizeof(d));
+    data = (LumaData *)malloc(sizeof(d));
     *data = d;
 
-    vsapi->createFilter(in, out, "Luma", lumaInit, lumaGetFrame, lumaFree, fmParallel, 0, data, core);
-    return;
+    VSFilterDependency deps[] = { {d.node, rpStrictSpatial} };
+    vsapi->createVideoFilter(out, "Luma", &d.vi, lumaGetFrame, lumaFree, fmParallel, deps, 1, data, core);
 }
 
