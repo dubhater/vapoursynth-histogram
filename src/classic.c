@@ -9,7 +9,6 @@
 typedef struct {
     VSNode *node;
     VSVideoInfo vi;
-    int histonly;
 
     int E167;
     uint8_t exptab[256];
@@ -27,16 +26,13 @@ static const VSFrame *VS_CC classicGetFrame(int n, int activationReason, void *i
 
         const VSVideoFormat *fi = &d->vi.format;
         int height = vsapi->getFrameHeight(src, 0);
-        int width = (d->histonly) ? vsapi->getFrameWidth(src, 0) : 
-                                    vsapi->getFrameWidth(src, 0) + 256;
+        int width = vsapi->getFrameWidth(src, 0) + 256;
 
-        
-        VSFrame* dst = (d->histonly) ? vsapi->newVideoFrame(fi, d->vi.width, height, src, core) :
-                                       vsapi->newVideoFrame(fi, width, height, src, core);
+        VSFrame *dst = vsapi->newVideoFrame(fi, width, height, src, core);
 
         int plane;
         for (plane = 0; plane < fi->numPlanes; plane++) {
-            const uint8_t* srcp = vsapi->getReadPtr(src, plane);
+            const uint8_t *srcp = vsapi->getReadPtr(src, plane);
             int src_stride = vsapi->getStride(src, plane);
             uint8_t *dstp = vsapi->getWritePtr(dst, plane);
             int dst_stride = vsapi->getStride(dst, plane);
@@ -45,14 +41,10 @@ static const VSFrame *VS_CC classicGetFrame(int n, int activationReason, void *i
             int w = vsapi->getFrameWidth(src, plane);
             int x;
 
-            const int draw_start_pt = (d->histonly) ? 0 : w; //starting draw point for histogram
-
-            // Copy src to dst one line at a time. Applies only when histonly is off
-            if (d->histonly < 1) {
-                for (y = 0; y < h; y++) {
-                    memcpy(dstp + dst_stride * y, srcp + src_stride * y, src_stride);
-                }
-            }                
+            // Copy src to dst one line at a time.
+            for (y = 0; y < h; y++) {
+                memcpy(dstp + dst_stride * y, srcp + src_stride * y, src_stride);
+            }
 
             int bps = fi->bitsPerSample;
             if (bps == 8) {
@@ -61,22 +53,17 @@ static const VSFrame *VS_CC classicGetFrame(int n, int activationReason, void *i
                     for (y = 0; y < h; y++) {
                         int hist[256] = { 0 };
                         for (x = 0; x < w; x++) {
-                            if (d->histonly)
-                                hist[srcp[x]] += 1;
-                            else
-                                hist[dstp[x]] += 1;
+                            hist[dstp[x]] += 1;
                         }
-                        for (x = 0; x < 256; x++) { // drawing start
+                        for (x = 0; x < 256; x++) {
                             if (x < 16 || x == 124 || x > 235) {
-                                dstp[x + draw_start_pt] = d->exptab[MIN(d->E167, hist[x])] + 68; // Magic numbers!
+                                dstp[x + w] = d->exptab[MIN(d->E167, hist[x])] + 68; // Magic numbers!
                             }
                             else {
-                                dstp[x + draw_start_pt] = d->exptab[MIN(255, hist[x])];
+                                dstp[x + w] = d->exptab[MIN(255, hist[x])];
                             }
                         }
                         dstp += dst_stride;
-                        if (d->histonly)
-                            srcp += src_stride;
                     }
                 }
                 else {
@@ -87,13 +74,13 @@ static const VSFrame *VS_CC classicGetFrame(int n, int activationReason, void *i
                         for (x = 0; x < 256; x += factor) {
                             if (x < 16 || x > 235) {
                                 // Blue. Because I can.
-                                dstp[(x >> subs) + draw_start_pt] = (plane == 1) ? 200 : 128;
+                                dstp[(x >> subs) + w] = (plane == 1) ? 200 : 128;
                             }
                             else if (x == 124) {
-                                dstp[(x >> subs) + draw_start_pt] = (plane == 1) ? 160 : 16;
+                                dstp[(x >> subs) + w] = (plane == 1) ? 160 : 16;
                             }
                             else {
-                                dstp[(x >> subs) + draw_start_pt] = 128;
+                                dstp[(x >> subs) + w] = 128;
                             }
                         }
                         dstp += dst_stride;
@@ -102,30 +89,24 @@ static const VSFrame *VS_CC classicGetFrame(int n, int activationReason, void *i
             }
             else {
                 uint16_t* dstp16 = (uint16_t*)dstp;
-                uint16_t* srcp16 = (uint16_t*)srcp;
                 // Now draw the histogram in the right side of dst.
                 if (plane == 0) {
                     for (y = 0; y < h; y++) {
                         int hist[256] = { 0 };
                         for (x = 0; x < w; x++) {
-                            // Add (1 << (bps - 8 - 1)) for rounding.                            
-                            if (d->histonly)
-                                hist[(srcp16[x] + (1 << (bps - 8 - 1))) >> (bps - 8)] += 1;
-                            else
-                                hist[(dstp16[x] + (1 << (bps - 8 - 1))) >> (bps - 8)] += 1;
+                            // Add (1 << (bps - 8 - 1)) for rounding.
+                            hist[(dstp16[x] + (1 << (bps - 8 - 1))) >> (bps - 8)] += 1;
                         }
                         for (x = 0; x < 256; x++) {
                             if (x < 16 || x == 124 || x > 235) {
-                                dstp16[x + draw_start_pt] = d->exptab[MIN(d->E167, hist[x])] + 68; // Magic numbers!
+                                dstp16[x + w] = d->exptab[MIN(d->E167, hist[x])] + 68; // Magic numbers!
                             }
                             else {
-                                dstp16[x + draw_start_pt] = d->exptab[MIN(255, hist[x])];
+                                dstp16[x + w] = d->exptab[MIN(255, hist[x])];
                             }
-                            dstp16[x + draw_start_pt] <<= (bps - 8);
+                            dstp16[x + w] <<= (bps - 8);
                         }
                         dstp16 += dst_stride / 2;
-                        if (d->histonly)
-                            srcp16 += src_stride / 2;
                     }
                 }
                 else {
@@ -136,15 +117,15 @@ static const VSFrame *VS_CC classicGetFrame(int n, int activationReason, void *i
                         for (x = 0; x < 256; x += factor) {
                             if (x < 16 || x > 235) {
                                 // Blue. Because I can.
-                                dstp16[(x >> subs) + draw_start_pt] = (plane == 1) ? 200 : 128;
+                                dstp16[(x >> subs) + w] = (plane == 1) ? 200 : 128;
                             }
                             else if (x == 124) {
-                                dstp16[(x >> subs) + draw_start_pt] = (plane == 1) ? 160 : 16;
+                                dstp16[(x >> subs) + w] = (plane == 1) ? 160 : 16;
                             }
                             else {
-                                dstp16[(x >> subs) + draw_start_pt] = 128;
+                                dstp16[(x >> subs) + w] = 128;
                             }
-                            dstp16[(x >> subs) + draw_start_pt] <<= (bps - 8);
+                            dstp16[(x >> subs) + w] <<= (bps - 8);
                         }
                         dstp16 += dst_stride / 2;
                     }
@@ -172,9 +153,8 @@ void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
     ClassicData d;
     ClassicData *data;
 
-    d.node = vsapi->mapGetNode(in, "clip", 0, 0);
-
     const double K = log(0.5 / 219) / 255;
+
     d.exptab[0] = 16;
     int i;
     for (i = 1; i < 255; i++) {
@@ -183,13 +163,9 @@ void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
             d.E167 = i;
     }
     d.exptab[255] = 235;
-    
-    int err;
-    d.histonly = vsapi->mapGetInt(in, "histonly", 0, &err);
-    if (err)
-        d.histonly = 0; // default to false
 
-    d.vi = *vsapi->getVideoInfo(d.node); // video info of original
+    d.node = vsapi->mapGetNode(in, "clip", 0, 0);
+    d.vi = *vsapi->getVideoInfo(d.node);
 
     if (!vsh_isConstantVideoFormat(&d.vi)
         || d.vi.format.sampleType != stInteger
@@ -200,37 +176,12 @@ void VS_CC classicCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
         return;
     }
 
-    // rotate right
-    VSPlugin* stdplugin = vsapi->getPluginByID(VSH_STD_PLUGIN_ID, core);
-
-    VSMap* tmpmap = vsapi->createMap();
-    vsapi->mapConsumeNode(tmpmap, "clip", d.node, maReplace);
-    VSMap* tmpmap2 = vsapi->invoke(stdplugin, "Transpose", tmpmap);
-    vsapi->clearMap(tmpmap);
-    tmpmap = vsapi->invoke(stdplugin, "FlipHorizontal", tmpmap2);
-    vsapi->clearMap(tmpmap2);
-    d.node = vsapi->mapGetNode(tmpmap, "clip", 0, 0);
-    vsapi->clearMap(tmpmap);
-
-    d.vi = *vsapi->getVideoInfo(d.node); // update video info after rotate
-
-    d.vi.width = (d.histonly > 0) ? 256 : d.vi.width + 256; // set output width(height for final output)
-
+    if (d.vi.width)
+        d.vi.width += 256;
+        
     data = (ClassicData *)malloc(sizeof(d));
     *data = d;
 
     VSFilterDependency deps[] = { {d.node, rpStrictSpatial} };
-    VSNode *node = vsapi->createVideoFilter2("Classic", &d.vi, classicGetFrame, classicFree, fmParallel, deps, 1, data, core);
-
-    // rotate left
-    vsapi->mapConsumeNode(tmpmap, "clip", node, maReplace);
-    tmpmap2 = vsapi->invoke(stdplugin, "FlipHorizontal", tmpmap);
-    vsapi->clearMap(tmpmap);
-    tmpmap = vsapi->invoke(stdplugin, "Transpose", tmpmap2);
-    vsapi->freeMap(tmpmap2);
-    node = vsapi->mapGetNode(tmpmap, "clip", 0, 0);
-    vsapi->freeMap(tmpmap);
-
-    vsapi->mapSetNode(out, "clip", node, maAppend);
-    vsapi->freeNode(node);
+    vsapi->createVideoFilter(out, "Classic", &d.vi, classicGetFrame, classicFree, fmParallel, deps, 1, data, core);
 }
