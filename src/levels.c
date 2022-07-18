@@ -91,12 +91,11 @@ static void drawYUV(uint8_t *dstp[3], const int src_width[3], const int src_heig
     for (x = 0; x < 256; x++) {
         float scaled_h = (float)hist[Y][x] * scale;
         int h = 64 - MIN((int)scaled_h, 64) + 1;
-        int left = (int)(220.0f * (scaled_h - (float)((int)scaled_h)));
 
         for (y = 64 + 1; y > h; y--) {
             dstp[Y][src_width[Y] + y * dst_stride[Y] + x] = 235;
         }
-        dstp[Y][src_width[Y] + h * dst_stride[Y] + x] = 16 + left;
+        dstp[Y][src_width[Y] + h * dst_stride[Y] + x] = 16;
     }
 
     if (fi->colorFamily == cfGray)
@@ -118,12 +117,11 @@ static void drawYUV(uint8_t *dstp[3], const int src_width[3], const int src_heig
     for (x = 0; x < 256; x++) {
         float scaled_h = (float)hist[U][x] * scale;
         int h = 128 + 16 - MIN((int)scaled_h, 64) + 1;
-        int left = (int)(220.0f * (scaled_h - (float)((int)scaled_h)));
 
         for (y = 128 + 16 + 1; y > h; y--) {
             dstp[Y][src_width[Y] + y * dst_stride[Y] + x] = 235;
         }
-        dstp[Y][src_width[Y] + h * dst_stride[Y] + x] = 16 + left;
+        dstp[Y][src_width[Y] + h * dst_stride[Y] + x] = 16;
     }
 
     // Draw the histogram of the V plane.
@@ -140,12 +138,11 @@ static void drawYUV(uint8_t *dstp[3], const int src_width[3], const int src_heig
     for (x = 0; x < 256; x++) {
         float scaled_h = (float)hist[V][x] * scale;
         int h = 192 + 32 - MIN((int)scaled_h, 64) + 1;
-        int left = (int)(220.0f * ((int)scaled_h - scaled_h));
 
         for (y = 192 + 32 + 1; y > h; y--) {
             dstp[Y][src_width[Y] + y * dst_stride[Y] + x] = 235;
         }
-        dstp[Y][src_width[Y] + h * dst_stride[Y] + x] = 16 + left;
+        dstp[Y][src_width[Y] + h * dst_stride[Y] + x] = 16;
     }
 
 
